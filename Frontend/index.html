@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bookkeeping — Financial Assistant</title>
+    <link rel="stylesheet" href="/frontend/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topnav">
+        <div class="brand">
+          <span class="brand-mark">B</span>
+          <span class="brand-name">Bookkeeping</span>
+        </div>
+        <nav class="nav topnav-links">
+          <button class="nav-item active" data-view="dashboard">Dashboard</button>
+          <button class="nav-item" data-view="bank">Transactions</button>
+          <button class="nav-item" data-view="reconciliation">Reconciliation</button>
+          <button class="nav-item" data-view="invoices">Invoices</button>
+          <button class="nav-item" data-view="payables">Payables</button>
+          <button class="nav-item" data-view="exceptions">Exceptions</button>
+          <button class="nav-item" data-view="rules">Rules</button>
+          <button class="nav-item" data-view="audit">Audit</button>
+          <button class="nav-item" data-view="settings">Settings</button>
+        </nav>
+        <div class="topnav-actions">
+          <div class="search">
+            <input type="search" placeholder="Search" />
+          </div>
+          <button id="refresh-data" class="btn">Refresh</button>
+          <div class="avatar">JS</div>
+        </div>
+      </header>
+
+      <main class="content">
+        <header class="page-header">
+          <div>
+            <h1 id="view-title">Dashboard</h1>
+            <p id="view-subtitle">Operational overview and daily workload.</p>
+          </div>
+          <div class="page-actions">
+            <span class="pill">AUD · Xero</span>
+          </div>
+        </header>
+
+        <section id="dashboard" class="view active">
+          <div class="dashboard-grid">
+            <!-- Total Balance Card -->
+            <div class="card highlight-card">
+              <div class="card-header">
+                <h3>Total Balance</h3>
+              </div>
+              <div class="balance-row">
+                <h2 id="stat-total-balance">$31,180.24</h2>
+                <div class="chip-group">
+                  <button class="chip">Send</button>
+                  <button class="chip">Receive</button>
+                </div>
+              </div>
+              <div class="card-footer">
+                <p class="muted">My cards</p>
+                <div class="my-cards">
+                  <div class="bank-card blue">
+                    <span class="number">**** **** 4455</span>
+                    <span class="name">Jack Watson</span>
+                  </div>
+                  <div class="bank-card green">
+                    <span class="number">**** **** 1899</span>
+                    <span class="name">Jack Watson</span>
+                  </div>
+                  <div class="bank-card dark">
+                    <span class="plus">+</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Spending Card -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <h3>Spending</h3>
+                <div class="chip small">Month</div>
+              </div>
+              <div class="spending-chart" id="spending-bars">
+                <!-- Bars will be injected here -->
+              </div>
+              <div class="card-footer">
+                <p class="muted">How to manage money well?</p>
+                <button class="chip" style="margin-top: 10px;">Learn More</button>
+              </div>
+            </div>
+
+            <!-- Transactions Card -->
+            <div class="card list-card">
+              <div class="card-header">
+                <h3>Transactions</h3>
+                <a href="#" class="muted">See All</a>
+              </div>
+              <div class="transaction-list" id="dashboard-transactions">
+                <!-- Transactions will be injected here -->
+              </div>
+            </div>
+
+            <!-- Expenses Card -->
+            <div class="card wide-card">
+              <div class="card-header">
+                <h3>Expenses</h3>
+                <div class="chip small">Dec 04</div>
+              </div>
+              <div class="area-chart-container" id="expenses-chart">
+                <svg width="100%" height="100%" viewBox="0 0 800 200" preserveAspectRatio="none">
+                  <path d="M0,150 Q200,50 400,120 T800,100 L800,200 L0,200 Z" fill="rgba(91, 123, 255, 0.2)" stroke="var(--primary)" stroke-width="3" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Credit Score Card -->
+            <div class="card score-card">
+              <div class="card-header">
+                <h3>Credit Score</h3>
+                <a href="#" class="muted">See More</a>
+              </div>
+              <div class="score-container">
+                <div class="gauge">
+                  <div class="gauge-body"></div>
+                  <div class="score-text">
+                    <h2 id="stat-credit-score">1620</h2>
+                    <span>Excellent</span>
+                  </div>
+                </div>
+                <button class="chip" style="margin-top: 20px; width: 100%;">Explore Benefits</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="bank" class="view">
+          <div class="card">
+            <div class="card-header">
+              <h3>Bank Transactions</h3>
+              <div class="filters">
+                <select id="bank-account-filter"></select>
+                <input type="date" id="bank-date-from" />
+                <input type="date" id="bank-date-to" />
+                <select id="bank-status-filter">
+                  <option value="UNRECONCILED">Unreconciled</option>
+                  <option value="ALL">All</option>
+                </select>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount (AUD)</th>
+                  <th>Type</th>
+                  <th>Bank Account</th>
+                  <th>Reference</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="bank-transactions"></tbody>
+            </table>
+            <div class="pagination">
+              <button class="btn" id="bank-prev">Prev</button>
+              <span id="bank-page">1</span>
+              <button class="btn" id="bank-next">Next</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="reconciliation" class="view">
+          <div class="card">
+            <div class="card-header">
+              <h3>Reconciliation Run</h3>
+              <button id="run-reconciliation" class="btn primary">Run Full Reconciliation</button>
+            </div>
+            <div id="reconciliation-summary" class="summary"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h3>Latest Results</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Source Ref</th>
+                  <th>Supplier</th>
+                  <th>Amount</th>
+                  <th>Match Method</th>
+                  <th>Confidence</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="reconciliation-results"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="invoices" class="view">
+          <div class="card">
+            <div class="card-header">
+              <h3>Invoices</h3>
+              <div class="filters">
+                <div class="tabs">
+                  <button class="tab active" data-type="ACCPAY">Bills</button>
+                  <button class="tab" data-type="ACCREC">Sales Invoices</button>
+                </div>
+                <select id="invoice-status">
+                  <option value="">All Statuses</option>
+                  <option>DRAFT</option>
+                  <option>SUBMITTED</option>
+                  <option>AUTHORISED</option>
+                  <option>PAID</option>
+                  <option>VOIDED</option>
+                </select>
+                <input type="date" id="invoice-date-from" />
+                <input type="date" id="invoice-date-to" />
+                <button id="export-invoices" class="btn">Export CSV</button>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Contact</th>
+                  <th>Date</th>
+                  <th>Due Date</th>
+                  <th>Amount (AUD)</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invoice-table"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="payables" class="view">
+          <div class="card">
+            <div class="card-header">
+              <h3>Process Invoice</h3>
+            </div>
+            <form id="invoice-form" class="form-grid">
+              <input type="text" name="source_reference" placeholder="Source Reference" required />
+              <input type="text" name="supplier_name" placeholder="Supplier Name" required />
+              <input type="date" name="invoice_date" required />
+              <input type="date" name="due_date" />
+              <input type="number" step="0.01" name="amount" placeholder="Amount (AUD)" required />
+              <input type="number" step="0.01" name="tax_amount" placeholder="Tax Amount" />
+              <input type="text" name="description" placeholder="Description" required />
+              <input type="text" name="client_id" placeholder="Client ID" required />
+              <button class="btn primary" type="submit">Create Draft Bill</button>
+            </form>
+            <div id="invoice-form-result" class="result"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>Outstanding Payables</h3>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Supplier</th>
+                  <th>Amount</th>
+                  <th>Due Date</th>
+                  <th>Invoice #</th>
+                </tr>
+              </thead>
+              <tbody id="outstanding-payables"></tbody>
+            </table>
+            <div id="payables-total" class="summary"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>Generate ABA Payment File</h3>
+            </div>
+            <form id="aba-form" class="form-grid">
+              <input type="text" name="batch_description" placeholder="Batch Description" required />
+              <input type="text" name="bsb" placeholder="BSB" required />
+              <input type="text" name="account_number" placeholder="Account Number" required />
+              <input type="text" name="account_name" placeholder="Account Name" required />
+              <textarea name="payments" placeholder="Payments JSON" rows="4" required></textarea>
+              <label class="checkbox">
+                <input type="checkbox" name="human_approved" />
+                I confirm these payments have been reviewed and approved
+              </label>
+              <button class="btn primary" type="submit">Generate ABA</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="exceptions" class="view">
+          <div class="card">
+            <div class="card-header">
+              <h3>Exceptions</h3>
+              <div class="summary" id="exceptions-summary"></div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Source Ref</th>
+                  <th>Reason</th>
+                  <th>Created</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="exceptions-table"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="rules" class="view">
+          <div class="card">
+            <div class="card-header">
+              <h3>Supplier Rules</h3>
+              <button id="add-rule" class="btn">Add Rule</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Supplier Name</th>
+                  <th>Account Code</th>
+                  <th>GST Code</th>
+                  <th>Client ID</th>
+                  <th>Last Updated</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="rules-table"></tbody>
+            </table>
+            <form id="rule-form" class="form-grid hidden">
+              <input type="text" name="supplier_name" placeholder="Supplier Name" required />
+              <input type="text" name="account_code" placeholder="Account Code" required />
+              <input type="text" name="gst_code" placeholder="GST Code" required />
+              <input type="text" name="client_id" placeholder="Client ID" required />
+              <button class="btn primary" type="submit">Save Rule</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="audit" class="view">
+          <div class="card">
+            <div class="card-header">
+              <h3>Audit Log</h3>
+              <select id="audit-filter">
+                <option value="">All Actions</option>
+                <option value="auto_reconciled">Auto-Reconciled</option>
+                <option value="escalated_to_exception">Escalated to Exception</option>
+                <option value="exception_resolved">Exception Resolved</option>
+                <option value="draft_bill_created">Draft Bill Created</option>
+              </select>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Action</th>
+                  <th>Entity Type</th>
+                  <th>Entity ID</th>
+                  <th>Rule Applied</th>
+                  <th>Confidence</th>
+                  <th>User</th>
+                </tr>
+              </thead>
+              <tbody id="audit-table"></tbody>
+            </table>
+            <div class="pagination">
+              <button class="btn" id="audit-prev">Prev</button>
+              <span id="audit-page">1</span>
+              <button class="btn" id="audit-next">Next</button>
+            </div>
+          </div>
+        </section>
+
+        <section id="settings" class="view">
+          <div class="card">
+            <div class="card-header">
+              <h3>Xero Connection</h3>
+            </div>
+            <div id="xero-status" class="summary"></div>
+            <div class="settings-actions">
+              <button id="connect-xero" class="btn primary">Connect Xero</button>
+              <button id="refresh-xero" class="btn">Refresh Token</button>
+              <button id="view-tenants" class="btn">View Tenants</button>
+            </div>
+            <div id="xero-tenants" class="list"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="modal" class="modal hidden">
+      <div class="modal-card">
+        <h3>Resolve Exception</h3>
+        <form id="resolve-form" class="form-grid">
+          <input type="text" name="resolved_by" placeholder="Resolved By" required />
+          <textarea name="resolution_note" placeholder="Resolution Note" rows="3" required></textarea>
+          <button class="btn primary" type="submit">Resolve</button>
+          <button class="btn" type="button" id="close-modal">Cancel</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="/frontend/script.js"></script>
+  </body>
+</html>
