@@ -20,11 +20,13 @@ Endpoints:
 """
 
 import logging
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse, Response
 
+from app.core.config import settings
 from app.core.exceptions import (
     AuthenticationError,
     TokenRefreshError,
@@ -38,6 +40,57 @@ router = APIRouter(
     prefix="/integrations",
     tags=["Integrations"],
 )
+
+
+def _demo_bank_transactions() -> list[dict[str, Any]]:
+    now = datetime.utcnow()
+    return [
+        {
+            "bank_transaction_id": "demo-bt-1001",
+            "bank_account_id": "demo-account-01",
+            "bank_account_name": "Business Checking",
+            "type": "SPEND",
+            "status": "UNRECONCILED",
+            "date": (now - timedelta(days=1)).isoformat(),
+            "amount": -245.75,
+            "currency_code": "AUD",
+            "reference": "Officeworks",
+            "description": "Stationery & supplies",
+            "contact": {"name": "Officeworks"},
+            "source_reference": None,
+            "is_reconciled": False,
+        },
+        {
+            "bank_transaction_id": "demo-bt-1002",
+            "bank_account_id": "demo-account-01",
+            "bank_account_name": "Business Checking",
+            "type": "RECEIVE",
+            "status": "UNRECONCILED",
+            "date": (now - timedelta(days=2)).isoformat(),
+            "amount": 1890.0,
+            "currency_code": "AUD",
+            "reference": "Client payment",
+            "description": "ACME Co",
+            "contact": {"name": "ACME Co"},
+            "source_reference": None,
+            "is_reconciled": False,
+        },
+        {
+            "bank_transaction_id": "demo-bt-1003",
+            "bank_account_id": "demo-account-02",
+            "bank_account_name": "Savings",
+            "type": "SPEND",
+            "status": "UNRECONCILED",
+            "date": (now - timedelta(days=3)).isoformat(),
+            "amount": -520.4,
+            "currency_code": "AUD",
+            "reference": "Marketing spend",
+            "description": "Meta Ads",
+            "contact": {"name": "Meta Ads"},
+            "source_reference": None,
+            "is_reconciled": False,
+        },
+    ]
 
 
 # ======================================================================
@@ -70,6 +123,14 @@ async def health_check_xero(
 
     Returns a `status` of `"ok"`, `"warning"`, or `"error"`.
     """
+    if settings.DEMO_MODE:
+        return {
+            "status": "ok",
+            "service": "Xero",
+            "organisation_name": "Demo Organisation",
+            "message": "Demo mode enabled. Xero calls are mocked.",
+        }
+
     try:
         result = await xero.check_connection()
         if result.get("status") == "error":
@@ -113,6 +174,9 @@ async def xero_authorize(
     After the user grants access, Xero will redirect to:
     `GET /api/v1/integrations/xero/callback?code=…&state=…`
     """
+    if settings.DEMO_MODE:
+        return RedirectResponse(url="/dashboard")
+
     auth_info = xero.get_authorization_url()
     logger.info("Redirecting to Xero authorization URL (state=%s)", auth_info["state"])
     return RedirectResponse(url=auth_info["authorization_url"])
@@ -141,6 +205,15 @@ async def xero_callback(
 
     Returns a confirmation with token expiry and tenant information.
     """
+    if settings.DEMO_MODE:
+        return {
+            "status": "ok",
+            "message": "Demo mode enabled. Tokens not required.",
+            "expires_in_seconds": 3600,
+            "scope": "demo",
+            "tenants": [{"tenant_id": "demo-tenant", "name": "Demo Organisation"}],
+        }
+
     try:
         token = await xero.exchange_code_for_token(code=code, state=state)
         tenants = await xero.get_tenants()
@@ -188,6 +261,19 @@ async def xero_tenants(
     The first tenant in the list is automatically set as the active tenant
     for all subsequent API calls.
     """
+    if settings.DEMO_MODE:
+        return {
+            "status": "ok",
+            "total": 1,
+            "tenants": [
+                {
+                    "tenant_id": "demo-tenant",
+                    "name": "Demo Organisation",
+                    "tenant_type": "ORGANISATION",
+                }
+            ],
+        }
+
     try:
         tenants = await xero.get_tenants()
         return {
@@ -222,6 +308,25 @@ async def xero_tenants(
 async def xero_bank_accounts(
     xero: XeroService = Depends(get_xero_service),
 ) -> dict[str, Any]:
+    if settings.DEMO_MODE:
+        accounts = [
+            {
+                "AccountID": "demo-account-01",
+                "Name": "Business Checking",
+                "Code": "090",
+                "Type": "BANK",
+                "CurrencyCode": "AUD",
+            },
+            {
+                "AccountID": "demo-account-02",
+                "Name": "Savings",
+                "Code": "091",
+                "Type": "BANK",
+                "CurrencyCode": "AUD",
+            },
+        ]
+        return {"status": "ok", "total": len(accounts), "accounts": accounts}
+
     async with xero:
         try:
             accounts = await xero.get_bank_accounts()
@@ -243,6 +348,16 @@ async def xero_contacts(
     search: str | None = Query(None, description="Optional contact search term"),
     xero: XeroService = Depends(get_xero_service),
 ) -> dict[str, Any]:
+    if settings.DEMO_MODE:
+        contacts = [
+            {"ContactID": "demo-contact-01", "Name": "Officeworks"},
+            {"ContactID": "demo-contact-02", "Name": "ACME Co"},
+            {"ContactID": "demo-contact-03", "Name": "Meta Ads"},
+        ]
+        if search:
+            contacts = [c for c in contacts if search.lower() in c["Name"].lower()]
+        return {"status": "ok", "total": len(contacts), "contacts": contacts}
+
     async with xero:
         try:
             contacts = await xero.get_contacts(search=search)
@@ -264,6 +379,16 @@ async def xero_accounts(
     account_type: str | None = Query(None, description="Optional account type filter"),
     xero: XeroService = Depends(get_xero_service),
 ) -> dict[str, Any]:
+    if settings.DEMO_MODE:
+        accounts = [
+            {"AccountID": "demo-gl-01", "Name": "Office Supplies", "Code": "400", "Type": "EXPENSE"},
+            {"AccountID": "demo-gl-02", "Name": "Advertising", "Code": "410", "Type": "EXPENSE"},
+            {"AccountID": "demo-gl-03", "Name": "Sales", "Code": "200", "Type": "REVENUE"},
+        ]
+        if account_type:
+            accounts = [a for a in accounts if a["Type"].lower() == account_type.lower()]
+        return {"status": "ok", "total": len(accounts), "accounts": accounts}
+
     async with xero:
         try:
             accounts = await xero.get_accounts(account_type=account_type)
@@ -286,6 +411,18 @@ async def xero_profit_and_loss(
     to_date: str = Query(..., description="End date (YYYY-MM-DD)"),
     xero: XeroService = Depends(get_xero_service),
 ) -> dict[str, Any]:
+    if settings.DEMO_MODE:
+        return {
+            "status": "ok",
+            "report": {
+                "from": from_date,
+                "to": to_date,
+                "total_income": 58200,
+                "total_expenses": 31250,
+                "net_profit": 26950,
+            },
+        }
+
     async with xero:
         try:
             report = await xero.get_profit_and_loss(from_date=from_date, to_date=to_date)
@@ -320,6 +457,14 @@ async def xero_refresh_token(
     Normally this is done automatically on 401 responses, but this endpoint
     allows you to trigger it manually (e.g. from a cron job or monitoring).
     """
+    if settings.DEMO_MODE:
+        return {
+            "status": "ok",
+            "message": "Demo mode enabled. Tokens not required.",
+            "expires_in_seconds": 3600,
+            "scope": "demo",
+        }
+
     try:
         token = await xero.refresh_tokens()
         return {
@@ -368,6 +513,41 @@ async def xero_get_invoices(
 
     The access token is **automatically refreshed** if expired before the call.
     """
+    if settings.DEMO_MODE:
+        now = datetime.utcnow()
+        invoices = [
+            {
+                "InvoiceNumber": "BILL-1001",
+                "Contact": {"Name": "Officeworks"},
+                "Date": (now - timedelta(days=10)).date().isoformat(),
+                "DueDate": (now + timedelta(days=5)).date().isoformat(),
+                "Total": 245.75,
+                "Status": "AUTHORISED",
+            },
+            {
+                "InvoiceNumber": "BILL-1002",
+                "Contact": {"Name": "Meta Ads"},
+                "Date": (now - timedelta(days=7)).date().isoformat(),
+                "DueDate": (now + timedelta(days=10)).date().isoformat(),
+                "Total": 520.4,
+                "Status": "SUBMITTED",
+            },
+            {
+                "InvoiceNumber": "BILL-1003",
+                "Contact": {"Name": "ACME Co"},
+                "Date": (now - timedelta(days=3)).date().isoformat(),
+                "DueDate": (now + timedelta(days=14)).date().isoformat(),
+                "Total": 1890.0,
+                "Status": "PAID",
+            },
+        ]
+        return {
+            "status": "ok",
+            "page": page,
+            "count": len(invoices),
+            "invoices": invoices,
+        }
+
     async with xero:
         try:
             invoices = await xero.get_invoices(
@@ -421,6 +601,16 @@ async def xero_export_invoices_csv(
 
     Returns a downloadable `xero_invoices.csv` attachment.
     """
+    if settings.DEMO_MODE:
+        csv_data = "Type,InvoiceNumber,Reference,Contact,Date,DueDate,Total,Status\n"
+        csv_data += "ACCPAY,BILL-1001,,Officeworks,2024-06-12,2024-06-30,245.75,AUTHORISED\n"
+        csv_data += "ACCPAY,BILL-1002,,Meta Ads,2024-06-15,2024-07-05,520.40,SUBMITTED\n"
+        return Response(
+            content=csv_data,
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=xero_invoices.csv"},
+        )
+
     async with xero:
         try:
             csv_data = await xero.export_invoices_csv(
@@ -469,6 +659,15 @@ async def xero_get_bank_transactions(
     Retrieves bank statement lines with `Status=UNRECONCILED` from Xero.
     These are the raw lines that need to be matched against source references.
     """
+    if settings.DEMO_MODE:
+        transactions = _demo_bank_transactions()
+        return {
+            "status": "ok",
+            "page": page,
+            "count": len(transactions),
+            "transactions": transactions,
+        }
+
     async with xero:
         try:
             transactions = await xero.get_unreconciled_bank_transactions(

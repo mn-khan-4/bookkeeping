@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bookkeeping — Financial Assistant</title>
+    <title>Bookkeeping Dashboard</title>
     <link rel="stylesheet" href="/frontend/styles.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,25 +16,29 @@
     <div class="app">
       <header class="topnav">
         <div class="brand">
-          <span class="brand-mark">B</span>
+          <span class="brand-mark"></span>
           <span class="brand-name">Bookkeeping</span>
         </div>
         <nav class="nav topnav-links">
-          <button class="nav-item active" data-view="dashboard">Dashboard</button>
+          <button class="nav-item active" data-view="dashboard">All</button>
           <button class="nav-item" data-view="bank">Transactions</button>
-          <button class="nav-item" data-view="reconciliation">Reconciliation</button>
-          <button class="nav-item" data-view="invoices">Invoices</button>
-          <button class="nav-item" data-view="payables">Payables</button>
-          <button class="nav-item" data-view="exceptions">Exceptions</button>
-          <button class="nav-item" data-view="rules">Rules</button>
-          <button class="nav-item" data-view="audit">Audit</button>
-          <button class="nav-item" data-view="settings">Settings</button>
+          <button class="nav-item" data-view="reconciliation">Analysis</button>
+          <button class="nav-item" data-view="invoices">Expenses</button>
+          <button class="nav-item" data-view="payables">Spending</button>
         </nav>
         <div class="topnav-actions">
           <div class="search">
             <input type="search" placeholder="Search" />
           </div>
-          <button id="refresh-data" class="btn">Refresh</button>
+          <div class="more-menu">
+            <button class="icon-btn" id="more-toggle" title="More">⋯</button>
+            <div class="more-dropdown" id="more-dropdown">
+              <button class="nav-item" data-view="rules">Supplier Rules</button>
+              <button class="nav-item" data-view="audit">Audit Log</button>
+              <button class="nav-item" data-view="settings">Settings</button>
+            </div>
+          </div>
+          <button id="refresh-data" class="icon-btn" title="Refresh">⟳</button>
           <div class="avatar">JS</div>
         </div>
       </header>
@@ -52,91 +56,73 @@
 
         <section id="dashboard" class="view active">
           <div class="dashboard-grid">
-            <!-- Total Balance Card -->
-            <div class="card highlight-card">
-              <div class="card-header">
+            <div class="card total-card">
+              <div class="card-header compact">
                 <h3>Total Balance</h3>
+                <span class="muted">Total across bank accounts</span>
               </div>
               <div class="balance-row">
-                <h2 id="stat-total-balance">$31,180.24</h2>
+                <h2 id="stat-total-balance">—</h2>
                 <div class="chip-group">
                   <button class="chip">Send</button>
                   <button class="chip">Receive</button>
                 </div>
               </div>
-              <div class="card-footer">
-                <p class="muted">My cards</p>
-                <div class="my-cards">
-                  <div class="bank-card blue">
-                    <span class="number">**** **** 4455</span>
-                    <span class="name">Jack Watson</span>
-                  </div>
-                  <div class="bank-card green">
-                    <span class="number">**** **** 1899</span>
-                    <span class="name">Jack Watson</span>
-                  </div>
-                  <div class="bank-card dark">
-                    <span class="plus">+</span>
-                  </div>
+              <div class="card-stack">
+                <div class="card-mini">
+                  <div class="card-mini-header">My cards</div>
+                  <div class="card-chip"></div>
+                  <div class="card-mini-number">**** 4456</div>
+                  <div class="card-mini-name">Jack Wilson</div>
                 </div>
+                <button class="card-add">+</button>
               </div>
             </div>
 
-            <!-- Spending Card -->
-            <div class="card chart-card">
-              <div class="card-header">
+            <div class="card spending-card">
+              <div class="card-header compact">
                 <h3>Spending</h3>
-                <div class="chip small">Month</div>
+                <button class="chip">Month</button>
               </div>
-              <div class="spending-chart" id="spending-bars">
-                <!-- Bars will be injected here -->
+              <div class="bar-chart" id="spending-bars">
+                <span></span><span></span><span></span><span class="active"></span><span></span><span></span>
               </div>
               <div class="card-footer">
+                <span class="muted">Auto-reconciled today</span>
+                <strong id="stat-auto">—</strong>
+              </div>
+              <div class="card-note">
                 <p class="muted">How to manage money well?</p>
-                <button class="chip" style="margin-top: 10px;">Learn More</button>
+                <button class="chip">Learn More</button>
               </div>
             </div>
 
-            <!-- Transactions Card -->
-            <div class="card list-card">
-              <div class="card-header">
+            <div class="card transactions-card">
+              <div class="card-header compact">
                 <h3>Transactions</h3>
-                <a href="#" class="muted">See All</a>
+                <a class="link" href="#">See all</a>
               </div>
-              <div class="transaction-list" id="dashboard-transactions">
-                <!-- Transactions will be injected here -->
-              </div>
+              <ul class="transaction-list" id="dashboard-transactions"></ul>
             </div>
 
-            <!-- Expenses Card -->
-            <div class="card wide-card">
-              <div class="card-header">
+            <div class="card expenses-card">
+              <div class="card-header compact">
                 <h3>Expenses</h3>
-                <div class="chip small">Dec 04</div>
+                <button class="chip">Dec 06</button>
               </div>
-              <div class="area-chart-container" id="expenses-chart">
-                <svg width="100%" height="100%" viewBox="0 0 800 200" preserveAspectRatio="none">
-                  <path d="M0,150 Q200,50 400,120 T800,100 L800,200 L0,200 Z" fill="rgba(91, 123, 255, 0.2)" stroke="var(--primary)" stroke-width="3" />
-                </svg>
-              </div>
+              <div class="line-chart" aria-hidden="true"></div>
             </div>
 
-            <!-- Credit Score Card -->
             <div class="card score-card">
-              <div class="card-header">
+              <div class="card-header compact">
                 <h3>Credit Score</h3>
-                <a href="#" class="muted">See More</a>
+                <a class="link" href="#">See more</a>
               </div>
-              <div class="score-container">
-                <div class="gauge">
-                  <div class="gauge-body"></div>
-                  <div class="score-text">
-                    <h2 id="stat-credit-score">1620</h2>
-                    <span>Excellent</span>
-                  </div>
-                </div>
-                <button class="chip" style="margin-top: 20px; width: 100%;">Explore Benefits</button>
+              <div class="score-ring">
+                <div class="score-value" id="stat-credit-score">—</div>
+                <span>Excellent</span>
               </div>
+              <button class="chip">Explore Benefits</button>
             </div>
           </div>
         </section>
@@ -154,7 +140,6 @@
                   <option value="ALL">All</option>
                 </select>
               </div>
-            </div>
             <table>
               <thead>
                 <tr>
@@ -192,7 +177,6 @@
             <table>
               <thead>
                 <tr>
-                  <th>Source Ref</th>
                   <th>Supplier</th>
                   <th>Amount</th>
                   <th>Match Method</th>
@@ -300,27 +284,6 @@
           </div>
         </section>
 
-        <section id="exceptions" class="view">
-          <div class="card">
-            <div class="card-header">
-              <h3>Exceptions</h3>
-              <div class="summary" id="exceptions-summary"></div>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Source Ref</th>
-                  <th>Reason</th>
-                  <th>Created</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="exceptions-table"></tbody>
-            </table>
-          </div>
-        </section>
 
         <section id="rules" class="view">
           <div class="card">
@@ -400,18 +363,6 @@
           </div>
         </section>
       </main>
-    </div>
-
-    <div id="modal" class="modal hidden">
-      <div class="modal-card">
-        <h3>Resolve Exception</h3>
-        <form id="resolve-form" class="form-grid">
-          <input type="text" name="resolved_by" placeholder="Resolved By" required />
-          <textarea name="resolution_note" placeholder="Resolution Note" rows="3" required></textarea>
-          <button class="btn primary" type="submit">Resolve</button>
-          <button class="btn" type="button" id="close-modal">Cancel</button>
-        </form>
-      </div>
     </div>
 
     <script src="/frontend/script.js"></script>

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.base import get_db
 from app.db.models import AuditLog, ExceptionItem, TransactionMatch
 from app.services.matching_service import TransactionMatchingService
@@ -40,6 +41,16 @@ async def run_reconciliation(
     db: AsyncSession = Depends(get_db),
     xero: XeroService = Depends(get_xero_service),
 ) -> dict[str, int]:
+    if settings.DEMO_MODE:
+        total = len(payload.items)
+        auto_reconciled = max(0, total - 1)
+        exceptions_created = 1 if total else 0
+        return {
+            "auto_reconciled": auto_reconciled,
+            "exceptions_created": exceptions_created,
+            "total": total,
+        }
+
     matcher = TransactionMatchingService(db)
     reconciler = ReconciliationService(db)
 
@@ -58,6 +69,13 @@ async def run_reconciliation(
 async def reconciliation_status(
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, int]:
+    if settings.DEMO_MODE:
+        return {
+            "total_processed_today": 18,
+            "auto_reconciled_today": 16,
+            "exceptions_pending": 2,
+        }
+
     today_start = datetime.combine(datetime.utcnow().date(), time.min)
 
     total_result = await db.execute(

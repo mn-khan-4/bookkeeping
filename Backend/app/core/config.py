@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"  # development | staging | production
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
+    DEMO_MODE: bool = False
 
     # ------------------------------------------------------------------
     # Xero API Credentials  (OAuth 2.0 PKCE / Client-Credentials)

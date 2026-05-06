@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.db.base import get_db
 from app.services.aba_service import ABAFileGenerator, PaymentRecord
 from app.services.payables_service import PayablesService
@@ -57,6 +58,19 @@ async def process_invoice(
     db: AsyncSession = Depends(get_db),
     xero: XeroService = Depends(get_xero_service),
 ) -> dict[str, Any]:
+    if settings.DEMO_MODE:
+        return {
+            "status": "ok",
+            "publish": {
+                "success": True,
+                "xero_invoice_id": "demo-invoice-1001",
+                "source_reference": payload.source_reference,
+                "message": "Demo mode draft bill created.",
+                "status_code": 200,
+            },
+            "warnings": [],
+        }
+
     service = PayablesService(db)
 
     invoice_date = datetime.fromisoformat(payload.invoice_date)
@@ -104,6 +118,22 @@ async def outstanding_payables(
     db: AsyncSession = Depends(get_db),
     xero: XeroService = Depends(get_xero_service),
 ) -> list[dict[str, Any]]:
+    if settings.DEMO_MODE:
+        return [
+            {
+                "supplier": "Officeworks",
+                "amount": 245.75,
+                "due_date": (datetime.utcnow().date()).isoformat(),
+                "invoice_number": "BILL-1001",
+            },
+            {
+                "supplier": "Meta Ads",
+                "amount": 520.4,
+                "due_date": (datetime.utcnow().date()).isoformat(),
+                "invoice_number": "BILL-1002",
+            },
+        ]
+
     service = PayablesService(db)
     async with xero:
         return await service.get_outstanding_payables(xero)
@@ -114,6 +144,13 @@ async def payables_summary(
     db: AsyncSession = Depends(get_db),
     xero: XeroService = Depends(get_xero_service),
 ) -> dict[str, Any]:
+    if settings.DEMO_MODE:
+        return {
+            "total_owed": 766.15,
+            "invoice_count": 2,
+            "next_due_date": datetime.utcnow().date().isoformat(),
+        }
+
     service = PayablesService(db)
     async with xero:
         outstanding = await service.get_outstanding_payables(xero)

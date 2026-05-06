@@ -15,12 +15,11 @@ const selectors = {
 };
 
 const viewMeta = {
-  dashboard: ["Dashboard", "Operational overview and daily workload."],
-  bank: ["Bank Transactions", "Review and match unreconciled statement lines."],
-  reconciliation: ["Reconciliation", "Run matching and auto-reconciliation."],
-  invoices: ["Invoices", "Monitor bills and sales invoices."],
-  payables: ["Accounts Payable", "Validate invoices and generate ABA files."],
-  exceptions: ["Exceptions", "Review and resolve escalated items."],
+  dashboard: ["Dashboard", "Financial overview and daily activity."],
+  bank: ["Transactions", "Review and match unreconciled statement lines."],
+  reconciliation: ["Analysis", "Run matching and auto-reconciliation."],
+  invoices: ["Expenses", "Monitor bills and supplier invoices."],
+  payables: ["Spending", "Validate invoices and generate ABA files."],
   rules: ["Supplier Rules", "Maintain supplier coding rules."],
   audit: ["Audit Log", "Track automation actions and approvals."],
   settings: ["Settings", "Manage Xero connection status."],
@@ -65,45 +64,62 @@ async function loadDashboard() {
       fetchJson("/admin/audit-log?limit=10&offset=0"),
     ]);
 
-    // Update Balance
-    const totalBalance = payablesSummary.total_owed ? (31180.24 - payablesSummary.total_owed).toFixed(2) : "31,180.24";
-    document.getElementById("stat-total-balance").textContent = `$${totalBalance}`;
+    const totalBalance = Number(payablesSummary.total_owed ?? 0);
+    animateValue("stat-total-balance", totalBalance, true);
+    animateValue("stat-auto", Number(status.auto_reconciled_today ?? 0));
 
-    // Render Spending Bars
-    const spendingContainer = document.getElementById("spending-bars");
-    const months = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const heights = [40, 60, 45, 80, 55, 70, 90];
-    spendingContainer.innerHTML = months.map((m, i) => `
-      <div class="bar-group">
-        <div class="bar ${m === "Sep" ? "active" : ""}" style="height: ${heights[i]}%;"></div>
-        <span class="bar-label">${m}</span>
-      </div>
-    `).join("");
+    const exceptionCount = Number(exceptionSummary.open ?? 0);
+    const creditScore = Math.max(1200, 1800 - exceptionCount * 12);
+    animateValue("stat-credit-score", creditScore);
 
-    // Render Transactions
     const transactionContainer = document.getElementById("dashboard-transactions");
-    const mockTxns = [
-      { name: "Apple Inc", time: "30 min ago", amount: "-$45.00", icon: "🍎" },
-      { name: "Jerry Helfer", time: "12 Dec 2024", amount: "+$120.00", icon: "👤" },
-      { name: "Dribbble", time: "11 Dec 2024", amount: "-$350.00", icon: "🏀" },
-      { name: "Ekra Food", time: "09 Dec 2024", amount: "-$452.00", icon: "🍔" },
-    ];
-    transactionContainer.innerHTML = mockTxns.map(t => `
-      <div class="transaction-item">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div class="txn-icon-wrapper">${t.icon}</div>
-          <div class="txn-info">
-            <h4>${t.name}</h4>
-            <p class="muted small">${t.time}</p>
+    const recent = (bank.transactions || []).slice(0, 4).map((txn) => {
+      const name = txn.contact?.name || txn.reference || "Bank Transfer";
+      const amount = Number(txn.amount ?? 0).toFixed(2);
+      const initials = name.split(" ").slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+      return `
+        <li class="transaction-item">
+          <div class="transaction-left">
+            <div class="transaction-icon">${initials}</div>
+            <div>
+              <strong>${name}</strong><br />
+              <span>${new Date(txn.date).toLocaleDateString()}</span>
+            </div>
           </div>
+          <strong>$${amount}</strong>
+        </li>`;
+    });
+    const fallback = `
+      <li class="transaction-item">
+        <div class="transaction-left">
+          <div class="transaction-icon">AF</div>
+          <div><strong>Apple Inc</strong><br /><span>30 min ago</span></div>
         </div>
-        <p class="txn-amount" style="color: ${t.amount.startsWith("+") ? "var(--success)" : "var(--text)"}">${t.amount}</p>
-      </div>
-    `).join("");
+        <strong>-$45.00</strong>
+      </li>`;
+    if (transactionContainer) {
+      transactionContainer.innerHTML = recent.join("") || fallback;
+    }
 
   } catch (error) {
     console.error(error);
   }
+}
+
+function animateValue(elementId, value, currency = false) {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  const end = Number.isFinite(value) ? value : 0;
+  const duration = 800;
+  const startTime = performance.now();
+
+  function step(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const current = Math.floor(end * progress);
+    element.textContent = currency ? `$${current.toLocaleString()}` : current.toString();
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
 }
 
 async function loadBankAccounts() {
@@ -240,25 +256,6 @@ async function loadPayables() {
   document.getElementById("payables-total").textContent = `Total: AUD ${total.toFixed(2)}`;
 }
 
-async function loadExceptions() {
-  const data = await fetchJson("/exceptions");
-  const rows = (data || []).map((item) => {
-    const status = (item.status || "").toUpperCase();
-    const badgeType = status === "RESOLVED" ? "success" : "warning";
-    return `<tr>
-      <td>${item.id}</td>
-      <td>${item.source_reference}</td>
-      <td>${item.reason}</td>
-      <td>${new Date(item.created_at).toLocaleDateString()}</td>
-      <td>${renderBadge(status, badgeType)}</td>
-      <td><button class="btn" data-resolve="${item.id}">Resolve</button></td>
-    </tr>`;
-  });
-  document.getElementById("exceptions-table").innerHTML = rows.join("");
-
-  const summary = await fetchJson("/exceptions/summary");
-  document.getElementById("exceptions-summary").textContent = `Open: ${summary.open} | Resolved: ${summary.resolved} | Total: ${summary.total}`;
-}
 
 async function loadRules() {
   const clientId = "default";
@@ -409,38 +406,6 @@ function initHandlers() {
     loadRules();
   });
 
-  document.getElementById("exceptions-table").addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (!button) return;
-    if (button.dataset.resolve) {
-      openResolveModal(button.dataset.resolve);
-    }
-  });
-
-  document.getElementById("close-modal").addEventListener("click", closeResolveModal);
-  document.getElementById("modal").addEventListener("click", (event) => {
-    if (event.target.id === "modal") {
-      closeResolveModal();
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeResolveModal();
-    }
-  });
-
-  document.getElementById("resolve-form").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const payload = Object.fromEntries(new FormData(event.target).entries());
-    await fetchJson(`/exceptions/${state.resolvingId}/resolve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    closeResolveModal();
-    loadExceptions();
-  });
 
   document.getElementById("connect-xero").addEventListener("click", () => {
     window.location.href = `${API_BASE}/integrations/xero/authorize`;
@@ -468,17 +433,21 @@ function initHandlers() {
       loadBankTransactions();
     }
   });
+
+  const moreToggle = document.getElementById("more-toggle");
+  const moreDropdown = document.getElementById("more-dropdown");
+  if (moreToggle && moreDropdown) {
+    moreToggle.addEventListener("click", () => {
+      moreDropdown.classList.toggle("show");
+    });
+    document.addEventListener("click", (event) => {
+      if (!moreDropdown.contains(event.target) && event.target !== moreToggle) {
+        moreDropdown.classList.remove("show");
+      }
+    });
+  }
 }
 
-function openResolveModal(exceptionId) {
-  state.resolvingId = exceptionId;
-  document.getElementById("modal").classList.remove("hidden");
-}
-
-function closeResolveModal() {
-  state.resolvingId = null;
-  document.getElementById("modal").classList.add("hidden");
-}
 
 async function initData() {
   await loadDashboard();
@@ -486,7 +455,6 @@ async function initData() {
   await loadBankTransactions();
   await loadInvoices();
   await loadPayables();
-  await loadExceptions();
   await loadRules();
   await loadAudit();
   await loadSettings();
